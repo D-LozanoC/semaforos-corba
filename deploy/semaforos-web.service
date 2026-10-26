@@ -1,0 +1,30 @@
+# ============================================================
+#  Servicio systemd para FLASK web + cliente CORBA (EC2-B).
+#  Mantiene la web viva aunque cierres la sesion SSH.
+#
+#  Instalacion (en EC2-B):
+#    1. Edita User=, WorkingDirectory= y Environment=SERVER_IP=.
+#    2. sudo cp deploy/semaforos-web.service /etc/systemd/system/
+#    3. sudo systemctl daemon-reload
+#    4. sudo systemctl enable --now semaforos-web
+#    5. sudo systemctl status semaforos-web
+#  Logs:  journalctl -u semaforos-web -f
+# ============================================================
+[Unit]
+Description=Semaforos CORBA - Web + cliente (EC2-B)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/semaforos-corba
+# >>> EDITA esta IP (la publica de EC2-A, donde corre omniNames) <<<
+Environment=SERVER_IP=CAMBIA_IP_PUBLICA_EC2_A
+Environment=NS_PORT=2809
+Environment=WEB_PORT=8080
+ExecStart=/bin/bash /home/ubuntu/semaforos-corba/deploy/start_web_ec2.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
