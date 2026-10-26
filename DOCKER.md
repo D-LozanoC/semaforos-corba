@@ -127,8 +127,15 @@ docker compose exec servidor python console_client/console.py \
   Flask, copia el código y genera los stubs desde el IDL.
 - **`docker-compose.yml`** — orquesta los dos contenedores (servidor y web) y
   su red interna para que se encuentren por nombre.
+- **`docker/entrypoint-server.sh`** — arranque del servidor: lanza omniNames y
+  luego el servidor CORBA (fija puerto IIOP y publica el host).
+- **`docker/entrypoint-web.sh`** — arranque de la web: Flask resolviendo el
+  servidor por el Naming Service.
 - **`.dockerignore`** — evita copiar al build lo innecesario (git, venv,
   stubs/IOR generados, etc.).
+
+> Los *entrypoints* viven en scripts aparte (no en comandos dentro del YAML)
+> para que los argumentos `-ORB...` lleguen intactos al proceso Python.
 
 ---
 

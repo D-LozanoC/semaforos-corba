@@ -38,6 +38,7 @@ COPY server/ ./server/
 COPY common/ ./common/
 COPY web_client/ ./web_client/
 COPY console_client/ ./console_client/
+COPY docker/ ./docker/
 
 # Generar los stubs desde el IDL (dentro de la imagen).
 RUN cd server && omniidl -bpython -C. ../idl/traffic.idl
