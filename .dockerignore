@@ -1,0 +1,18 @@
+# No copiar al contexto de build lo que no hace falta en la imagen.
+.git
+.gitignore
+.gitattributes
+*.md
+__pycache__/
+*.pyc
+.venv/
+venv/
+# Artefactos generados: los stubs se generan DENTRO de la imagen,
+# y el IOR no se usa (los contenedores hablan por el Naming Service).
+server/traffic/
+server/traffic__POA/
+server/traffic_idl.py
+server/server.ior
+# Scripts especificos de otros entornos
+scripts/*.bat
+deploy/

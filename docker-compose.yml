@@ -1,0 +1,58 @@
+# ============================================================
+#  docker-compose.yml - Levanta TODO el sistema en local.
+# ------------------------------------------------------------
+#  Dos contenedores desde la MISMA imagen:
+#    - servidor : omniNames + servidor CORBA
+#    - web      : Flask (web + cliente CORBA)
+#
+#  Se comunican por la red interna de Docker usando el nombre
+#  'servidor' como host (Docker lo resuelve por DNS interno).
+#
+#  Uso:
+#    docker compose up --build
+#    # luego abre  http://localhost:8080
+# ============================================================
+services:
+
+  servidor:
+    build: .
+    image: semaforos-corba:latest
+    container_name: semaforos-servidor
+    # Arranca omniNames y, acto seguido, el servidor CORBA.
+    # endPointPublish usa el nombre 'servidor' para que el IOR sea
+    # alcanzable por el contenedor web dentro de la red de Docker.
+    command: >
+      sh -c "omniNames -start 2809 -logdir /tmp &
+             sleep 2 &&
+             cd server &&
+             python server.py
+               -ORBendPoint giop:tcp::5000
+               -ORBendPointPublish giop:tcp:servidor:5000
+               -ORBInitRef NameService=corbaname::servidor:2809"
+    ports:
+      - "5000:5000"
+      - "2809:2809"
+    networks:
+      - corba-net
+
+  web:
+    build: .
+    image: semaforos-corba:latest
+    container_name: semaforos-web
+    depends_on:
+      - servidor
+    # Resuelve TrafficService via el omniNames del contenedor 'servidor'.
+    command: >
+      sh -c "cd web_client &&
+             python app.py
+               -ORBInitRef NameService=corbaname::servidor:2809"
+    environment:
+      - WEB_PORT=8080
+    ports:
+      - "8080:8080"
+    networks:
+      - corba-net
+
+networks:
+  corba-net:
+    driver: bridge
