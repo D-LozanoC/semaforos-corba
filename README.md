@@ -73,10 +73,10 @@ semaforos-corba/
 ├── console_client/
 │   └── console.py            # Cliente CORBA de consola
 ├── scripts/
-│   ├── gen_stubs.sh          # Genera los stubs desde el IDL (omniidl)
-│   ├── run_server.sh         # Arranca el servidor
-│   ├── run_web.sh            # Arranca la web + cliente CORBA
-│   └── run_console.sh        # Ejecuta el cliente de consola
+│   ├── gen_stubs.sh / .bat   # Genera los stubs desde el IDL (omniidl)
+│   ├── run_server.sh / .bat  # Arranca el servidor
+│   ├── run_web.sh / .bat     # Arranca la web + cliente CORBA
+│   └── run_console.sh / .bat # Ejecuta el cliente de consola  (.sh = Linux/macOS, .bat = Windows)
 ├── requirements.txt
 └── README.md
 ```
@@ -142,7 +142,84 @@ paquete del sistema.
 
 ---
 
+## 🪟 Instalación en Windows
+
+En Windows **no existe `apt`**, y compilar omniORB desde fuente es engorroso
+(necesita Visual Studio y configurar variables de entorno). Por eso la vía
+recomendada es **conda**, que tiene paquetes precompilados oficiales de
+`omniorb` y `omniorbpy` para Windows (`win-64`) en *conda-forge*.
+
+### 🟢 Camino A (recomendado): Miniconda + conda-forge
+
+1. **Instala Miniconda** desde
+   [docs.conda.io/projects/miniconda](https://docs.conda.io/projects/miniconda/en/latest/)
+   (acepta las opciones por defecto).
+2. Abre **"Anaconda Prompt"** desde el menú Inicio (no uses PowerShell/CMD
+   normal la primera vez, para que `conda` esté en el PATH).
+3. Crea el entorno e instala todo:
+   ```bat
+   conda create -n semaforos python=3.11
+   conda activate semaforos
+   conda install -c conda-forge omniorbpy flask
+   ```
+   > `omniorbpy` arrastra `omniorb` (el ORB base) e incluye `omniidl` y
+   > `omniNames` dentro del entorno. Sirven Python 3.11, 3.12 y 3.13.
+4. Comprueba la instalación (con el entorno `semaforos` activado):
+   ```bat
+   omniidl -V
+   python -c "import omniORB, CORBA, CosNaming; print('omniORBpy OK')"
+   python -c "import flask; print('Flask', flask.__version__)"
+   ```
+
+### 🟡 Camino B (alternativa): instalador oficial de omniORB + pip
+
+Si no quieres conda, el autor publica binarios de Windows en
+[omniorb.net](https://omniorb.net):
+
+1. Instala **Python** desde [python.org](https://www.python.org/downloads/windows/)
+   (marca *"Add python.exe to PATH"*).
+2. Descarga el binario de **omniORB + omniORBpy para Windows (x64)** que
+   coincida con tu versión de Python.
+3. Descomprímelo (p. ej. `C:\omniORB`) y añade a las variables de entorno:
+   - `PATH` → `C:\omniORB\bin\x86_win32`
+   - `PYTHONPATH` → `C:\omniORB\lib\python`
+4. `pip install Flask`
+
+> ⚠️ Esta vía es más frágil: la versión de omniORBpy debe coincidir con la
+> versión y arquitectura (x64) exactas de tu Python. Por eso se recomienda conda.
+
+### ▶️ Ejecutar en Windows
+
+Los scripts `.sh` **no corren** en CMD/PowerShell; para Windows usa los
+**`.bat`** equivalentes (en Anaconda Prompt, con `semaforos` activado y desde
+la raíz del proyecto):
+
+```bat
+REM 1) Generar los stubs desde el IDL (solo la primera vez)
+scripts\gen_stubs.bat
+
+REM 2) Arrancar el servidor CORBA (Terminal 1 — se queda corriendo)
+scripts\run_server.bat
+
+REM 3a) En otra Anaconda Prompt: la web (Terminal 2)
+scripts\run_web.bat
+REM abre http://localhost:8080
+
+REM 3b) ...o el cliente de consola
+scripts\run_console.bat            REM lista todas
+scripts\run_console.bat INT-03     REM consulta una
+```
+
+> 💡 Alternativa: si usas **Git Bash** o **WSL**, los scripts `bash
+> scripts/*.sh` funcionan igual que en Linux.
+
+---
+
 ## ▶️ Ejecución en LOCAL — paso a paso
+
+> Los comandos de esta sección usan los scripts `.sh` (**Linux/macOS**). En
+> **Windows**, sustituye cada `bash scripts/xxx.sh` por `scripts\xxx.bat`
+> (ver la sección [Instalación en Windows](#-instalación-en-windows)).
 
 En local **no necesitas omniNames**: el servidor escribe su referencia en un
 archivo `server/server.ior` y los clientes lo leen desde ahí automáticamente.
@@ -222,6 +299,8 @@ Consulta de interseccion: INT-03
 | `No se pudo localizar TrafficService` en el cliente | El servidor no está corriendo o no hay `server.ior` | Arranca primero el servidor (Paso 2); confirma que existe `server/server.ior` |
 | El puerto 8080 está ocupado | Otro proceso lo usa | Cambia el puerto en `web_client/app.py` (`app.run(port=...)`) |
 | `ModuleNotFoundError: No module named 'flask'` | Flask no instalado en este intérprete | `pip install Flask` |
+| **(Windows)** `'bash' no se reconoce...` | Estás usando los scripts `.sh` en CMD/PowerShell | Usa los scripts `.bat` (`scripts\run_server.bat`), o Git Bash/WSL |
+| **(Windows)** `'omniidl' no se reconoce...` | El entorno conda no está activado o conda no está en el PATH | Abre **Anaconda Prompt** y ejecuta `conda activate semaforos` |
 
 ---
 

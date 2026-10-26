@@ -1,0 +1,4 @@
+# Mantener terminaciones de linea correctas por tipo de script:
+# los .bat de Windows necesitan CRLF; los .sh de Unix necesitan LF.
+*.bat text eol=crlf
+*.sh  text eol=lf
