@@ -1,13 +1,27 @@
 # 🚦 Semáforos Inteligentes con CORBA — Bogotá
 
-Mini proyecto didáctico que demuestra cómo funciona el middleware **CORBA**
-en un sistema distribuido, usando un ejemplo claro: consultar el tráfico
-simulado de intersecciones de Bogotá.
+Mini proyecto **didáctico** que muestra, con un ejemplo pequeño y claro, cómo
+funciona el middleware **CORBA** en un sistema distribuido. La "excusa" es un
+sistema de **semáforos inteligentes**: un mapa de Bogotá con varias
+intersecciones; al hacer clic en una, se consulta su tráfico simulado
+(cantidad de vehículos, nivel de congestión y espera promedio).
 
-> **Arquitectura elegida: Opción B.** La interfaz web y el cliente CORBA
-> viven en el **mismo proceso Flask**, para no tener un intermediario
-> innecesario. Un segundo cliente (consola) habla CORBA directo, y así se
-> demuestra que **clientes distintos invocan el mismo contrato IDL**.
+No hay sensores reales ni algoritmos de tráfico: los datos se **simulan** en
+el servidor. El objetivo es enseñar **invocación remota** y **comunicación
+entre componentes distribuidos** mediante un contrato **IDL**.
+
+> ### ¿Qué demuestra exactamente?
+> Que **clientes distintos** (una web y una consola) pueden invocar
+> operaciones de un **servidor remoto** usando un contrato definido en **IDL**,
+> **sin saber cómo está implementado por dentro**. Eso es la *transparencia*
+> que aporta CORBA.
+
+> ### Arquitectura elegida: **Opción B**
+> La **interfaz web** y el **cliente CORBA** viven en el **mismo proceso
+> Flask**, para no tener un intermediario innecesario. Así evitamos además dos
+> dolores de cabeza clásicos: **CORS** y el **"mixed content" HTTPS**. Un
+> segundo cliente —el de **consola**— habla CORBA directo, y es el que deja ver
+> que *el mismo contrato IDL sirve a clientes totalmente distintos*.
 
 ---
 
@@ -25,106 +39,197 @@ simulado de intersecciones de Bogotá.
   (habla CORBA directo, sin HTTP)
 ```
 
-El punto clave: **el navegador no puede hablar CORBA** (CORBA usa IIOP, no
-HTTP). Por eso Flask traduce HTTP↔CORBA dentro del mismo proceso. El cliente
-de consola, en cambio, sí habla CORBA directo. Ambos usan el **mismo
-contrato IDL** (`idl/traffic.idl`) sin conocer la implementación interna del
-servidor: eso es la **transparencia** que demuestra CORBA.
+El punto clave: **el navegador no puede hablar CORBA** (CORBA viaja por
+**IIOP** sobre TCP, no por HTTP). Por eso Flask traduce **HTTP ↔ CORBA**
+dentro del mismo proceso. El cliente de consola, en cambio, habla CORBA
+directo. Ambos usan el **mismo contrato IDL** (`idl/traffic.idl`) sin conocer
+la implementación interna del servidor.
+
+### El flujo de una consulta, paso a paso
+
+1. En el navegador haces clic en una intersección del mapa Leaflet.
+2. El JavaScript llama a `GET /api/intersections/<id>` (HTTP) de **tu propio Flask**.
+3. Flask, que **también es cliente CORBA**, invoca `get_intersection(id)` en el servidor remoto vía IIOP.
+4. El servidor ejecuta la lógica (datos simulados) y devuelve una `struct` definida en el IDL.
+5. Flask convierte esa `struct` a JSON y la responde al navegador, que pinta el resultado.
 
 ---
 
-## 📁 Estructura
+## 📁 Estructura del proyecto
 
 ```
 semaforos-corba/
 ├── idl/
-│   └── traffic.idl           # EL CONTRATO. Todo se genera de aquí.
+│   └── traffic.idl           # EL CONTRATO. Todo lo demás se genera de aquí.
 ├── server/
 │   ├── server.py             # Servidor CORBA (implementa TrafficService)
-│   ├── data.py               # Datos simulados de Bogotá
-│   └── (traffic/, traffic__POA/, server.ior)  # generados en runtime
+│   ├── data.py               # Datos simulados de 8 intersecciones de Bogotá
+│   └── (traffic/, traffic__POA/, server.ior)  # ⚙️ GENERADOS en runtime (no se versionan)
 ├── common/
 │   └── corba_client.py       # Lógica compartida para conectarse al servidor
 ├── web_client/
-│   ├── app.py                # OPCIÓN B: web + cliente CORBA en un proceso
-│   └── templates/index.html  # Mapa Leaflet
+│   ├── app.py                # OPCIÓN B: web + cliente CORBA en un solo proceso
+│   └── templates/index.html  # Mapa interactivo con Leaflet
 ├── console_client/
 │   └── console.py            # Cliente CORBA de consola
 ├── scripts/
 │   ├── gen_stubs.sh          # Genera los stubs desde el IDL (omniidl)
-│   ├── run_server.sh
-│   ├── run_web.sh
-│   └── run_console.sh
+│   ├── run_server.sh         # Arranca el servidor
+│   ├── run_web.sh            # Arranca la web + cliente CORBA
+│   └── run_console.sh        # Ejecuta el cliente de consola
 ├── requirements.txt
 └── README.md
 ```
+
+> Las carpetas `server/traffic/`, `server/traffic__POA/` y el archivo
+> `server/server.ior` **se generan** al compilar el IDL y al arrancar el
+> servidor; por eso están en `.gitignore` y **no** aparecen en el repo.
+
+---
+
+## ✅ Requisitos previos
+
+| Componente | Para qué | Cómo se obtiene |
+|---|---|---|
+| **Python 3** (3.10+ recomendado) | Ejecutar todo el proyecto | Ya instalado en Linux/macOS, o [python.org](https://www.python.org) |
+| **omniORB** + **omniORBpy** | El ORB de CORBA y su mapeo a Python (incluye `omniidl`) | `apt` / `pip` / `conda` (abajo) |
+| **omniNames** *(opcional en local)* | Servicio de nombres CORBA | Viene con omniORB (`omniorb-nameserver`) |
+| **Flask** | Servir la web y exponer la API | `pip install Flask` |
+
+Herramientas que proporciona omniORB y que usaremos:
+- **`omniidl`** → el compilador de IDL. Genera los *stubs* (cliente) y
+  *skeletons* (servidor) en Python a partir de `traffic.idl`.
+- **`omniNames`** → el servicio de nombres (lo usaremos sobre todo en EC2).
 
 ---
 
 ## ⚙️ Instalación
 
-Necesitas **omniORB + omniORBpy** (el ORB y su mapeo a Python) y **Flask**.
+Elige **una** de las vías. En Linux, la de `apt` es la más robusta porque
+instala `omniidl` y `omniNames` como comandos del sistema.
 
-### Ubuntu / Debian (recomendado para EC2)
+### Opción 1 — Ubuntu / Debian (recomendada) 🐧
 ```bash
 sudo apt update
 sudo apt install -y omniorb omniidl omniorb-nameserver python3-omniorb
 pip install Flask
 ```
 
-### pip (Python ≥ 3.10)
+### Opción 2 — pip (requiere **Python ≥ 3.10**) 🐍
 ```bash
 pip install omniorb-py Flask
 ```
+> ⚠️ El paquete de PyPI `omniorb-py` es un *fork* no oficial y exige Python
+> 3.10 o superior. Si falla la compilación, usa la vía `apt` (Linux) o
+> `conda`.
 
-### conda
+### Opción 3 — conda (multiplataforma, aísla el entorno) 📦
 ```bash
+conda create -n semaforos python=3.11
+conda activate semaforos
 conda install -c conda-forge omniorbpy flask
 ```
 
-Comprueba que `omniidl` está disponible:
+### Comprobar que quedó bien instalado
 ```bash
-omniidl -V
+omniidl -V          # debe imprimir la versión del compilador IDL
+python -c "import omniORB, CORBA, CosNaming; print('omniORBpy OK')"
+python -c "import flask; print('Flask', flask.__version__)"
 ```
+Si los tres comandos funcionan, estás listo. Si `omniidl` "no se encuentra"
+pero instalaste por pip, usa la vía `apt`/`conda`: el compilador viene con el
+paquete del sistema.
 
 ---
 
-## ▶️ Ejecución en LOCAL (3 terminales)
+## ▶️ Ejecución en LOCAL — paso a paso
 
-### 1) Generar los stubs desde el IDL (solo la primera vez)
+En local **no necesitas omniNames**: el servidor escribe su referencia en un
+archivo `server/server.ior` y los clientes lo leen desde ahí automáticamente.
+Esa es la forma más simple de empezar.
+
+> 💡 Vas a necesitar **2 terminales** abiertas en la raíz del proyecto: una
+> para el servidor (se queda corriendo) y otra para el cliente (web o consola).
+
+### Paso 0 — Clonar el repositorio
+```bash
+git clone https://github.com/D-LozanoC/semaforos-corba.git
+cd semaforos-corba
+```
+
+### Paso 1 — Generar los stubs desde el IDL  *(solo la primera vez)*
 ```bash
 bash scripts/gen_stubs.sh
 ```
-Esto ejecuta `omniidl -bpython` y crea los paquetes `traffic/` y
-`traffic__POA/` dentro de `server/`.
+Internamente ejecuta `omniidl -bpython -C. ../idl/traffic.idl`, que **lee el
+contrato** y crea dentro de `server/`:
+- el paquete **`traffic/`** (los *stubs*: lo que invocan los clientes),
+- el paquete **`traffic__POA/`** (los *skeletons*: la base del servidor),
+- un módulo `traffic_idl.py`.
 
-### 2) Arrancar el servidor CORBA
+> Repite este paso solo si cambias `idl/traffic.idl`.
+
+### Paso 2 — Arrancar el servidor CORBA  *(Terminal 1)*
 ```bash
 bash scripts/run_server.sh
 ```
-El servidor se registra en omniNames (si está disponible) y **siempre**
-escribe `server/server.ior` como respaldo. En local no necesitas omniNames:
-el IOR por archivo basta.
+Deberías ver algo como:
+```
+[servidor] IOR escrito en .../server/server.ior
+[servidor] TrafficService listo. Esperando invocaciones...
+[servidor] (Ctrl+C para salir)
+```
+Déjalo corriendo. (Verás un aviso de que omniNames no está disponible: es
+**normal** en local; el servidor usa el archivo IOR como respaldo.)
 
-### 3a) Arrancar la web (Opción B)
+### Paso 3a — Arrancar la web  *(Terminal 2)* — Opción B
 ```bash
 bash scripts/run_web.sh
-# abre http://localhost:8080
+```
+Abre **http://localhost:8080** en el navegador. Haz clic en los marcadores del
+mapa para consultar el tráfico. Cada clic viaja: navegador → Flask → CORBA →
+servidor → y de vuelta.
+
+### Paso 3b — O probar el cliente de consola  *(Terminal 2)*
+```bash
+bash scripts/run_console.sh            # lista TODAS las intersecciones
+bash scripts/run_console.sh INT-03     # consulta UNA intersección
+```
+Salida de ejemplo:
+```
+============================================================
+Consulta de interseccion: INT-03
+============================================================
+  INT-03  |  Av. Boyaca con Calle 80
+     vehiculos: 47    congestion: MEDIO   espera: 38s
+     coords: (4.6945, -74.1030)
 ```
 
-### 3b) O usar el cliente de consola
-```bash
-bash scripts/run_console.sh            # lista todas las intersecciones
-bash scripts/run_console.sh INT-03     # consulta una
-```
+### Verificación rápida (que todo funciona)
+- ✅ El servidor imprime `TrafficService listo...` y **no** se cierra.
+- ✅ `run_console.sh` lista las 8 intersecciones con números distintos cada vez (los datos son aleatorios).
+- ✅ La web en `:8080` muestra el mapa con marcadores de colores (verde/naranja/rojo según congestión).
+
+---
+
+## 🧩 Solución de problemas (local)
+
+| Síntoma | Causa probable | Solución |
+|---|---|---|
+| `omniidl: command not found` | omniORB se instaló solo por pip, sin el compilador del sistema | Instala por `apt` (`sudo apt install omniidl`) o por `conda` |
+| `ModuleNotFoundError: No module named 'traffic'` | No generaste los stubs | Ejecuta `bash scripts/gen_stubs.sh` |
+| `ImportError: No module named 'omniORB'` | omniORBpy no instalado o entorno equivocado | Revisa la instalación y que uses el mismo intérprete (`python -c "import omniORB"`) |
+| `No se pudo localizar TrafficService` en el cliente | El servidor no está corriendo o no hay `server.ior` | Arranca primero el servidor (Paso 2); confirma que existe `server/server.ior` |
+| El puerto 8080 está ocupado | Otro proceso lo usa | Cambia el puerto en `web_client/app.py` (`app.run(port=...)`) |
+| `ModuleNotFoundError: No module named 'flask'` | Flask no instalado en este intérprete | `pip install Flask` |
 
 ---
 
 ## ☁️ Despliegue en AWS EC2
 
-El **servidor CORBA** y la **web+cliente CORBA (Flask)** van a EC2. Al
-fusionar web y cliente en un proceso (Opción B), **ya no necesitas GitHub
-Pages** ni te preocupas por CORS ni por "mixed content".
+El **servidor CORBA** y la **web + cliente CORBA (Flask)** van a EC2. Al
+fusionar web y cliente en un proceso (Opción B), **no necesitas GitHub Pages**
+ni te preocupas por CORS ni por "mixed content".
 
 ### Puntos críticos (los que normalmente rompen CORBA en la nube)
 
@@ -135,37 +240,40 @@ Pages** ni te preocupas por CORS ni por "mixed content".
      -ORBendPoint giop:tcp::5000 \
      -ORBendPointPublish giop:tcp:<IP_PUBLICA_EC2>:5000
    ```
-   `endPointPublish` hace que el IOR anuncie la IP **pública**, no la privada.
+   `-ORBendPointPublish` hace que el IOR anuncie la IP **pública** (la que ven
+   los clientes), no la privada de la instancia.
 
 2. **Security Group de EC2**: abre los puertos
    - `5000` (IIOP del servidor),
    - `2809` (omniNames, si lo usas),
-   - `8080` (Flask), o `80/443` si pones nginx delante.
+   - `8080` (Flask), o `80`/`443` si pones nginx delante.
 
-3. **Naming Service** (opcional pero recomendado entre instancias):
+3. **Naming Service** (recomendado entre instancias). omniNames arranca la
+   primera vez con `-start` y escucha en **2809** por defecto:
    ```bash
-   # en la instancia del servidor
+   # en la instancia del servidor (primera vez)
    omniNames -start 2809
 
-   # el cliente/web resuelven con:
+   # el servidor / la web / la consola resuelven el nombre con:
    python app.py -ORBInitRef NameService=corbaname::<IP_NAMING>:2809
    ```
-   Si prefieres simplicidad, copia el `server.ior` del servidor a la
-   instancia de Flask y deja que use el fallback por archivo.
+   Alternativa simple: copia el `server/server.ior` del servidor a la
+   instancia de Flask y deja que use el **fallback por archivo** (sin omniNames).
 
 ---
 
-## 🎓 ¿Qué demuestra este proyecto sobre CORBA?
+## 🎓 Conceptos de CORBA que ilustra el proyecto
 
-- **Contrato IDL independiente del lenguaje** (`traffic.idl`): define *qué*
-  se puede invocar, no *cómo* está hecho.
+- **Contrato IDL independiente del lenguaje** (`traffic.idl`): define *qué* se
+  puede invocar, no *cómo* está hecho.
 - **Transparencia de ubicación**: los clientes invocan `get_intersection()`
-  como si fuera local; el ORB se encarga del transporte por la red (IIOP).
+  como si fuera una llamada local; el ORB se encarga del transporte por red (IIOP).
 - **Clientes heterogéneos, mismo contrato**: la web (vía Flask) y la consola
   invocan exactamente el mismo `TrafficService`.
-- **Stubs y skeletons generados**: `omniidl` genera el código de
-  serialización (marshalling) automáticamente desde el IDL.
-- **Excepciones de dominio** (`IntersectionNotFound`) que viajan por la red.
+- **Stubs y skeletons generados**: `omniidl` genera automáticamente el código
+  de serialización (*marshalling*) a partir del IDL.
+- **Excepciones de dominio** (`IntersectionNotFound`) que viajan por la red
+  igual que cualquier otro tipo del IDL.
 
 Todo esto **sin sensores reales ni algoritmos de tráfico**: los datos se
 simulan en `server/data.py`.
