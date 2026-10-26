@@ -215,6 +215,43 @@ scripts\run_console.bat INT-03     REM consulta una
 
 ---
 
+## 🐧 Windows vía WSL (receta probada en Ubuntu)
+
+Si en Windows prefieres WSL (o conda te da problemas con el módulo nativo
+`_omnipy`/`_omniidl`), esta es una receta **verificada**. La clave: el paquete
+pip `omniorb-py` **solo trae wheel para Python 3.10**, así que el venv debe ser
+de esa versión.
+
+```bash
+# 1. Requisitos (dentro de Ubuntu/WSL)
+sudo apt update
+sudo apt install -y git python3.10 python3.10-venv python3.10-dev
+
+# 2. Clonar EN el home de Linux (no en /mnt/c, por los finales de linea CRLF)
+cd ~
+git clone https://github.com/D-LozanoC/semaforos-corba.git
+cd ~/semaforos-corba
+
+# 3. venv con Python 3.10 + binding por pip
+python3.10 -m venv ~/semaforos-venv
+source ~/semaforos-venv/bin/activate
+pip install --upgrade pip
+pip install omniorb-py Flask
+
+# 4. omniidl necesita un 'python' en /usr/local/bin que apunte al venv (3.10)
+sudo ln -sf ~/semaforos-venv/bin/python3 /usr/local/bin/python
+
+# 5. Verificar
+python -c "import omniORB, flask; print('binding OK')"
+python -c "import _omniidl; print('omniidl OK')"
+```
+
+A partir de aquí, cada terminal nueva necesita `source ~/semaforos-venv/bin/activate`
+antes de ejecutar los scripts. (El `gen_stubs.sh` detecta el venv y lanza
+omniidl con el Python correcto automáticamente.)
+
+---
+
 ## ▶️ Ejecución en LOCAL — paso a paso
 
 > Los comandos de esta sección usan los scripts `.sh` (**Linux/macOS**). En
