@@ -15,6 +15,17 @@ NS_PORT="${NS_PORT:-2809}"
 
 echo ">> [web] conectando al NameService en $SERVER_HOST:$NS_PORT | web :${WEB_PORT:-8080}"
 
+# El servidor puede tardar unos segundos en registrar TrafficService en
+# omniNames. depends_on NO espera a que el servicio este listo, solo a que el
+# contenedor arranque, asi que reintentamos hasta que la app levante.
 cd /app/web_client
-exec python app.py \
-  -ORBInitRef "NameService=corbaname::$SERVER_HOST:$NS_PORT"
+n=0
+until python app.py -ORBInitRef "NameService=corbaname::$SERVER_HOST:$NS_PORT"; do
+  n=$((n + 1))
+  if [ "$n" -ge 15 ]; then
+    echo ">> [web] el servidor no respondio tras $n intentos; abortando."
+    exit 1
+  fi
+  echo ">> [web] servidor aun no listo (intento $n); reintentando en 3s..."
+  sleep 3
+done

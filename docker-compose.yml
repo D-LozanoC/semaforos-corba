@@ -44,6 +44,8 @@ services:
       - WEB_PORT=8080
     ports:
       - "8080:8080"
+    # Red de seguridad: si la web aun asi fallara al arrancar, que reintente.
+    restart: on-failure
     networks:
       - corba-net
 
