@@ -99,12 +99,18 @@
         </div>`;
     }
 
-    // Consulta UNA interseccion -> Flask -> CORBA -> servidor.
-    async function selectIntersection(id) {
-      const res = await fetch('/api/intersections/' + id);
-      const d = await res.json();
+    // Guardamos los datos de la ultima carga para que el pop-up del
+    // marcador y el panel de la derecha muestren EXACTAMENTE lo mismo.
+    // (Los datos del servidor son aleatorios en cada llamada, por eso
+    //  NO volvemos a consultar al hacer clic: reutilizamos lo ya cargado.)
+    let datosPorId = {};
+
+    // Muestra en el panel derecho los datos YA cargados de una interseccion.
+    function selectIntersection(id) {
+      const d = datosPorId[id];
+      if (!d) return;
       renderDetail(d);
-      if (!d.error && markers[id]) {
+      if (markers[id]) {
         markers[id].openPopup();
       }
     }
@@ -114,11 +120,14 @@
       const res = await fetch('/api/intersections');
       const list = await res.json();
 
-      // Limpiar marcadores anteriores.
+      // Limpiar marcadores y datos anteriores.
       Object.values(markers).forEach(m => map.removeLayer(m));
       markers = {};
+      datosPorId = {};
 
       list.forEach(d => {
+        datosPorId[d.id] = d;   // guardamos el dato para reutilizarlo
+
         const marker = L.circleMarker([d.lat, d.lon], {
           radius: 10,
           color: '#333',
@@ -127,10 +136,12 @@
           fillOpacity: 0.9
         }).addTo(map);
 
+        // El pop-up se arma con los MISMOS datos que vera el panel.
         marker.bindPopup(
           `<b>${d.name}</b><br>${d.id}<br>` +
           `Vehiculos: ${d.vehicle_count}<br>` +
-          `Congestion: ${d.congestion_level}`);
+          `Congestion: ${d.congestion_level}<br>` +
+          `Espera: ${d.avg_wait_seconds}s`);
 
         marker.on('click', () => selectIntersection(d.id));
         markers[d.id] = marker;
