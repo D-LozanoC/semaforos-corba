@@ -347,6 +347,10 @@ El **servidor CORBA** y la **web + cliente CORBA (Flask)** van a EC2. Al
 fusionar web y cliente en un proceso (Opción B), **no necesitas GitHub Pages**
 ni te preocupas por CORS ni por "mixed content".
 
+> 📘 **Guía completa de despliegue en dos instancias:** ver **[DEPLOY.md](DEPLOY.md)**
+> — incluye scripts de arranque (`deploy/`), configuración de Security Groups
+> y servicios systemd para que no se caiga al cerrar SSH.
+
 ### Puntos críticos (los que normalmente rompen CORBA en la nube)
 
 1. **Fijar el puerto IIOP del servidor** (si no, usa un puerto aleatorio

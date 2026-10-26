@@ -1,0 +1,31 @@
+# ============================================================
+#  Servicio systemd para el SERVIDOR CORBA (EC2-A).
+#  Mantiene el servidor vivo aunque cierres la sesion SSH.
+#
+#  Instalacion (en EC2-A):
+#    1. Edita User=, WorkingDirectory= y Environment= segun tu caso.
+#    2. sudo cp deploy/semaforos-server.service /etc/systemd/system/
+#    3. sudo systemctl daemon-reload
+#    4. sudo systemctl enable --now semaforos-server
+#    5. sudo systemctl status semaforos-server
+#  Logs:  journalctl -u semaforos-server -f
+# ============================================================
+[Unit]
+Description=Semaforos CORBA - Servidor (EC2-A)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/semaforos-corba
+# >>> EDITA estas IPs <<<
+Environment=PUBLIC_IP=CAMBIA_IP_PUBLICA_EC2_A
+Environment=PRIVATE_IP=CAMBIA_IP_PRIVADA_EC2_A
+Environment=IIOP_PORT=5000
+Environment=NS_PORT=2809
+ExecStart=/bin/bash /home/ubuntu/semaforos-corba/deploy/start_server_ec2.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

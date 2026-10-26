@@ -64,4 +64,7 @@ def api_one(int_id):
 
 if __name__ == "__main__":
     # host=0.0.0.0 para que sea accesible desde fuera de EC2.
-    app.run(host="0.0.0.0", port=8080, debug=True, use_reloader=False)
+    # El puerto se puede fijar con la variable de entorno WEB_PORT
+    # (util en el despliegue); por defecto 8080.
+    port = int(os.environ.get("WEB_PORT", "8080"))
+    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
