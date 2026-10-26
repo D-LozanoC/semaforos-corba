@@ -1,0 +1,44 @@
+// ============================================================
+//  traffic.idl  -  Contrato CORBA del sistema de semaforos
+// ------------------------------------------------------------
+//  Este archivo es el CORAZON del proyecto. Define, de forma
+//  independiente del lenguaje, QUE operaciones ofrece el
+//  servidor. Tanto el servidor (Python) como los clientes
+//  (Flask y consola) se generan a partir de este contrato
+//  usando el compilador  omniidl -bpython traffic.idl
+// ============================================================
+
+module traffic {
+
+  // Informacion de trafico de una interseccion.
+  struct IntersectionInfo {
+    string id;                 // identificador unico, ej. "INT-01"
+    string name;               // nombre legible de la interseccion
+    double lat;                // latitud  (para pintar en Leaflet)
+    double lon;                // longitud (para pintar en Leaflet)
+    long   vehicle_count;      // vehiculos detectados (simulado)
+    string congestion_level;   // "BAJO", "MEDIO", "ALTO"
+    long   avg_wait_seconds;   // espera promedio en segundos (simulado)
+  };
+
+  // Una secuencia (lista) de intersecciones.
+  typedef sequence<IntersectionInfo> IntersectionList;
+
+  // Excepcion de dominio: se lanza si piden un id inexistente.
+  exception IntersectionNotFound {
+    string reason;
+  };
+
+  // La interfaz remota. Esto es lo que los clientes invocan
+  // SIN saber como esta implementado por dentro.
+  interface TrafficService {
+
+    // Devuelve todas las intersecciones conocidas.
+    IntersectionList list_intersections();
+
+    // Devuelve una interseccion por su id.
+    IntersectionInfo get_intersection(in string id)
+      raises (IntersectionNotFound);
+  };
+
+};

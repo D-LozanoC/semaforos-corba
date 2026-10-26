@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Semaforos Inteligentes Bogota - CORBA</title>
+
+  <!-- Leaflet (CDN) -->
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, Arial, sans-serif; color: #1a1a2e; }
+    header {
+      background: #16213e; color: #fff; padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    header h1 { font-size: 18px; margin: 0; }
+    header small { color: #a9c0ff; }
+    #layout { display: flex; height: calc(100vh - 56px); }
+    #map { flex: 1; }
+    #panel {
+      width: 340px; padding: 18px; overflow-y: auto;
+      background: #f5f7fb; border-left: 1px solid #dde3ee;
+    }
+    #panel h2 { font-size: 15px; margin: 0 0 10px; color: #16213e; }
+    .hint { color: #6b7280; font-size: 13px; }
+    .card {
+      background: #fff; border-radius: 10px; padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-top: 10px;
+    }
+    .card .name { font-weight: 600; font-size: 15px; }
+    .card .id { color: #6b7280; font-size: 12px; }
+    .row { display: flex; justify-content: space-between; margin-top: 8px; font-size: 14px; }
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; color: #fff;
+    }
+    .BAJO  { background: #22a06b; }
+    .MEDIO { background: #e08e0b; }
+    .ALTO  { background: #d64550; }
+    button.refresh {
+      margin-top: 14px; width: 100%; padding: 9px; border: 0; cursor: pointer;
+      background: #3a5fcd; color: #fff; border-radius: 8px; font-size: 14px;
+    }
+    button.refresh:hover { background: #2f4db0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🚦 Semaforos Inteligentes - Bogota</h1>
+    <small>Interfaz web + cliente CORBA en un solo proceso Flask</small>
+  </header>
+
+  <div id="layout">
+    <div id="map"></div>
+    <div id="panel">
+      <h2>Interseccion seleccionada</h2>
+      <p class="hint">Haz clic en un marcador del mapa para consultar
+         su trafico simulado. Cada consulta viaja por CORBA al servidor.</p>
+      <div id="detail"></div>
+      <button class="refresh" onclick="loadAll()">↻ Recargar intersecciones</button>
+    </div>
+  </div>
+
+  <script>
+    // Centrar el mapa en Bogota.
+    const map = L.map('map').setView([4.655, -74.09], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    let markers = {};
+
+    function colorFor(level) {
+      return level === 'ALTO' ? '#d64550'
+           : level === 'MEDIO' ? '#e08e0b' : '#22a06b';
+    }
+
+    function renderDetail(d) {
+      if (d.error) {
+        document.getElementById('detail').innerHTML =
+          '<div class="card"><div class="name">Error</div><div>' + d.error + '</div></div>';
+        return;
+      }
+      document.getElementById('detail').innerHTML = `
+        <div class="card">
+          <div class="name">${d.name}</div>
+          <div class="id">${d.id}</div>
+          <div class="row"><span>Vehiculos</span><strong>${d.vehicle_count}</strong></div>
+          <div class="row"><span>Congestion</span>
+            <span class="badge ${d.congestion_level}">${d.congestion_level}</span></div>
+          <div class="row"><span>Espera promedio</span><strong>${d.avg_wait_seconds}s</strong></div>
+          <div class="row"><span>Coordenadas</span>
+            <span>${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}</span></div>
+        </div>`;
+    }
+
+    // Consulta UNA interseccion -> Flask -> CORBA -> servidor.
+    async function selectIntersection(id) {
+      const res = await fetch('/api/intersections/' + id);
+      const d = await res.json();
+      renderDetail(d);
+      if (!d.error && markers[id]) {
+        markers[id].openPopup();
+      }
+    }
+
+    // Carga TODAS las intersecciones y pinta los marcadores.
+    async function loadAll() {
+      const res = await fetch('/api/intersections');
+      const list = await res.json();
+
+      // Limpiar marcadores anteriores.
+      Object.values(markers).forEach(m => map.removeLayer(m));
+      markers = {};
+
+      list.forEach(d => {
+        const marker = L.circleMarker([d.lat, d.lon], {
+          radius: 10,
+          color: '#333',
+          weight: 1,
+          fillColor: colorFor(d.congestion_level),
+          fillOpacity: 0.9
+        }).addTo(map);
+
+        marker.bindPopup(
+          `<b>${d.name}</b><br>${d.id}<br>` +
+          `Vehiculos: ${d.vehicle_count}<br>` +
+          `Congestion: ${d.congestion_level}`);
+
+        marker.on('click', () => selectIntersection(d.id));
+        markers[d.id] = marker;
+      });
+    }
+
+    loadAll();
+  </script>
+</body>
+</html>

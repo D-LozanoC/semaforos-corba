@@ -1,0 +1,13 @@
+# Stubs generados por omniidl (se regeneran con scripts/gen_stubs.sh)
+server/traffic/
+server/traffic__POA/
+server/traffic_idl.py
+
+# IOR generado en runtime
+server/server.ior
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

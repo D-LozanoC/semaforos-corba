@@ -1,0 +1,10 @@
+# Dependencias Python del proyecto.
+#
+# omniORBpy NO siempre se instala limpio con pip en todas las plataformas.
+# Opciones recomendadas (ver README):
+#   - Ubuntu/Debian: sudo apt install omniorb omniidl python3-omniorb
+#   - pip (Py>=3.10): pip install omniorb-py
+#   - conda:         conda install -c conda-forge omniorbpy
+#
+# Flask SI se instala con pip sin problema:
+Flask>=3.0
